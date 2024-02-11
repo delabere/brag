@@ -53,6 +53,13 @@ To remove an entry from your list:
 ```sh
 brag edit
 ```
+```sh
+❯ brag edit
+? Select an entry to edit ›
+  I wrote my first brag... cool 🤩
+  Another one within a minute of the first, you can't stop me!
+❯ This isn't where I parked my car?
+```
 
 Follow the interactive prompt to select an entry to edit in your default editor.
 
@@ -77,6 +84,14 @@ To remove an entry from your list:
 
 ```sh
 brag remove
+```
+
+```sh
+❯ brag remove
+? Select an entry to remove ›
+  I wrote my first brag... cool 🤩
+❯ Another one within a minute of the first, you can't stop me!
+  This isn't where I parked my car?
 ```
 
 Follow the interactive prompt to select and remove an entry.
