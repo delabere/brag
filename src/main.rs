@@ -52,9 +52,9 @@ fn main() {
     } else if let Some(view_matches) = matches.subcommand_matches("view") {
         let raw = view_matches.is_present("raw");
         view_entries(raw).expect("Failed to view brag entries");
-    } else if let Some(_) = matches.subcommand_matches("edit") {
+    } else if matches.subcommand_matches("edit").is_some() {
         edit_entry().expect("Failed to edit brag entry");
-    } else if let Some(_) = matches.subcommand_matches("remove") {
+    } else if matches.subcommand_matches("remove").is_some() {
         remove_entry().expect("Failed to remove brag entry");
     }
 }
@@ -81,7 +81,7 @@ fn add_entry_from_editor() -> Result<(), Box<dyn std::error::Error>> {
 
     let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
 
-    Command::new(&editor)
+    Command::new(editor)
         .arg(&temp_path)
         .status()?;
 
@@ -165,7 +165,7 @@ fn edit_entry() -> Result<(), Box<dyn std::error::Error>> {
         write!(temp_file.as_file_mut(), "{}", entries[index].content)?;
 
         let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
-        Command::new(&editor)
+        Command::new(editor)
             .arg(&temp_path)
             .status()?;
 
