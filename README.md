@@ -72,10 +72,22 @@ To view your list of achievements:
 brag view
 ```
 
+```sh
+❯ brag view
+1. 2024-02-11 20:18:42: I wrote my first brag... cool 🤩
+2. 2024-02-11 20:19:00: Another one within a minute of the first, you can't stop me!
+3. 2024-02-11 20:19:15: This isn't where I parked my car?
+```
+
 To view your list in raw JSON format so you can filter it down with a tool like `jq`:
 
 ```sh
 brag view --raw
+```
+
+```
+❯ brag view --raw
+[{"content":"I wrote my first brag... cool 🤩","timestamp":1707682722},{"content":"Another one within a minute of the first, you can't stop me!","timestamp":1707682740},{"content":"This isn't where I parked my car?","timestamp":1707682755}]
 ```
 
 ### Removing an Entry
