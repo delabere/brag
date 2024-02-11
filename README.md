@@ -1,16 +1,18 @@
-# Brag CLI Application
+# Brag
 
-## Overview
+The Brag CLI application is a user-friendly tool designed to help you to maintain a personalized list of accomplishments, milestones, or any brag-worthy moments. It's written in Rust so it's blazingly fast.
 
-The Brag CLI application is a fast, efficient, and user-friendly tool designed to help users maintain a personalized list of accomplishments, milestones, or any brag-worthy moments. Blazingly fast, thanks to Rust's performance and safety features, Brag lets users swiftly add, view, and manage their achievements with ease.
+When you get to a performance review, you can use your brag list to hep you write it up. You could even throw it at a LLM like ChatGPT and it can even do the bulk of the writing for you.
 
-Whether you're preparing for a performance review, tracking personal milestones, or simply want to keep a record of your proud moments, Brag provides a streamlined command-line interface to store your accomplishments with timestamps for historical ordering.
+Happy bragging!
 
 ## Features
 
 - **Add Entries**: Quickly add new achievements to your brag list with a simple command.
 - **View Entries**: Display your achievements in a nicely formatted list or raw JSON format for easy parsing or integration with other tools.
+- **Edit Entries**: Interactively select and edit entries.
 - **Remove Entries**: Interactively select and remove entries you no longer want to keep.
+- **Dotfile Storage**: Your brag list is stored as a dotfile in your home directory, each brag is also timestamped.
 - **Blazingly Fast**: Written in Rust, Brag offers exceptional performance and efficiency.
 
 ## Usage
@@ -20,8 +22,21 @@ Whether you're preparing for a performance review, tracking personal milestones,
 To add a new achievement to your brag list:
 
 ```sh
-brag add "Completed my first marathon"
+brag add  # opens in your default editor
+# or to add more quickly
+brag add "I just wrote my first rust-based project 🦀!!"
 ```
+
+### Editing an Entry
+
+To remove an entry from your list:
+
+```sh
+brag edit
+```
+
+Follow the interactive prompt to select an entry to edit in your default editor.
+
 
 ### Viewing Entries
 
@@ -31,7 +46,7 @@ To view your list of achievements:
 brag view
 ```
 
-To view your list in raw JSON format:
+To view your list in raw JSON format so you can filter it down with a tool like `jq`:
 
 ```sh
 brag view --raw
@@ -49,6 +64,8 @@ Follow the interactive prompt to select and remove an entry.
 
 ## Installation
 
+### Source
+
 Currently, you can compile Brag from source. Make sure you have Rust installed on your system, and then clone this repository and build the project:
 
 ```sh
@@ -59,14 +76,7 @@ cargo build --release
 
 The executable will be available in `target/release/`.
 
-We are working on making Brag available through cargo install and other package managers soon.
+### Nix
 
-## Contributing
+This project is a nix flake, so you can add it to your own flakes too
 
-Contributions to Brag are welcome! Whether it's reporting bugs, suggesting new features, or contributing to the code, we appreciate your help in making Brag better.
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-Brag is released under the MIT License. See [LICENSE](LICENSE) for more information.
