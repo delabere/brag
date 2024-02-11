@@ -1,6 +1,6 @@
 ![Raw GitHub Image](https://raw.githubusercontent.com/delabere/brag/main/brag_logo.png)
 
-Brag is a user-friendly command-line tool designed to help you to maintain a personalized list of accomplishments, milestones, or any brag-worthy moments. It's written in Rust so it's blazingly fast.
+Brag is a user-friendly command-line tool designed to help you to maintain a personalized list of accomplishments, milestones, or any brag-worthy moments. It's written in Rust so it's blazingly fast 🚀🚀🚀
 
 When you get to a performance review, you can use your brag list to hep you write it up. You could even throw it at a LLM like ChatGPT and it can even do the bulk of the writing for you.
 
