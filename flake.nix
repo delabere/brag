@@ -20,6 +20,13 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        brag = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "brag";
+          version = "0.1.0";
+          src = ./brag;
+          cargoSha256 = "sha256-WTqLemoZ5qqdk3RBQJSoY+U/sD5Urtugl2zp9ptmS+A="; # Replace with actual hash
+          # buildInputs = [pkgs.openssl pkgs.pkgconfig];
+        };
       in
         with pkgs; {
           devShells.default = mkShell {
@@ -30,12 +37,9 @@
               fd
               rust-bin.stable.latest.default
             ];
-
-            shellHook = ''
-              alias ls=eza
-              alias find=fd
-            '';
           };
+
+          packages.default = brag;
         }
     );
 }
