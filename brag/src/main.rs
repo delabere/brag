@@ -1,6 +1,7 @@
-use chrono::{serde::ts_seconds, DateTime, Utc};
+use clap::{App, Arg, SubCommand};
+use chrono::{DateTime, Utc, serde::ts_seconds};
 use serde::{Deserialize, Serialize};
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 use dirs::home_dir;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,33 +21,37 @@ impl BragEntry {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let matches = App::new("Brag")
+        .version("1.0")
+        .author("Your Name")
+        .about("Maintains a brag list")
+        .subcommand(SubCommand::with_name("add")
+            .about("Adds a new brag to your list")
+            .arg(Arg::with_name("MESSAGE")
+                .help("The brag message to add")
+                .required(true)
+                .index(1)))
+        .subcommand(SubCommand::with_name("view")
+            .about("Views your brag list")
+            .arg(Arg::with_name("raw")
+                .long("raw")
+                .help("Displays the raw JSON data")))
+        .get_matches();
 
-    match args.as_slice() {
-        [_, content] if content != "view" && content != "--help" => {
-            add_entry(BragEntry::new(content)).expect("Failed to add brag entry")
+    if let Some(matches) = matches.subcommand_matches("add") {
+        if let Some(message) = matches.value_of("MESSAGE") {
+            add_entry(BragEntry::new(message)).expect("Failed to add brag entry");
         }
-        [_, flag] if flag == "view" => view_entries(false).expect("Failed to view brag entries"),
-        [_, flag, raw_flag] if flag == "view" && raw_flag == "--raw" => {
-            view_entries(true).expect("Failed to view brag entries in raw format")
-        }
-        [_, flag] if flag == "--help" => print_help(),
-        _ => print_help(),
+    } else if let Some(matches) = matches.subcommand_matches("view") {
+        let raw = matches.is_present("raw");
+        view_entries(raw).expect("Failed to view brag entries");
     }
-}
-
-fn print_help() {
-    println!("Brag - A CLI tool to maintain a brag list\n");
-    println!("Usage:");
-    println!("  brag [MESSAGE]      Add a new entry with the message");
-    println!("  brag view           View all brag entries");
-    println!("  brag view --raw     View all brag entries in raw JSON format");
-    println!("  brag --help         Show this help message");
 }
 
 fn brag_file_path() -> PathBuf {
     home_dir().expect("Could not find home directory").join(".brag_list.json")
 }
+
 
 fn add_entry(entry: BragEntry) -> Result<(), Box<dyn std::error::Error>> {
     let path = brag_file_path();
