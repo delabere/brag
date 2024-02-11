@@ -1,5 +1,3 @@
-# Brag
-
 ![Raw GitHub Image](https://raw.githubusercontent.com/delabere/brag/main/brag_logo.png)
 
 The Brag CLI application is a user-friendly tool designed to help you to maintain a personalized list of accomplishments, milestones, or any brag-worthy moments. It's written in Rust so it's blazingly fast.
