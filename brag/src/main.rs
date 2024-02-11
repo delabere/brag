@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand, ArgMatches};
+use clap::{App, Arg, SubCommand, ArgMatches, AppSettings};
 use chrono::{DateTime, Utc, serde::ts_seconds};
 use console::Term;
 use dialoguer::{Select, theme::ColorfulTheme};
@@ -29,6 +29,7 @@ fn main() {
         .version("1.0")
         .author("Your Name <your_email@example.com>")
         .about("Maintains a brag list")
+        .setting(AppSettings::ArgRequiredElseHelp) // This line enforces showing help if no args
         .subcommand(SubCommand::with_name("add")
             .about("Adds a new brag to your list or opens an editor to write the brag")
             .arg(Arg::with_name("MESSAGE")
