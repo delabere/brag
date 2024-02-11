@@ -2,7 +2,7 @@
 
 Brag is a user-friendly command-line tool designed to help you to maintain a personalized list of accomplishments, milestones, or any brag-worthy moments. It's written in Rust so it's blazingly fast 🚀🚀🚀
 
-When you get to a performance review, you can use your brag list to hep you write it up. You could even throw it at a LLM like ChatGPT and it can even do the bulk of the writing for you.
+When you get to a performance review, you can use your brag list as your source of inspiration. You could even throw it at a LLM like ChatGPT and it can even do the bulk of the writing for you.
 
 Happy bragging!
 
