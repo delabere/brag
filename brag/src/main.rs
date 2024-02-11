@@ -1,16 +1,20 @@
-use serde::{Serialize, Deserialize};
-use std::{fs, env, path::PathBuf};
+use chrono::{serde::ts_seconds, DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::{env, fs, path::PathBuf};
 use dirs::home_dir;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BragEntry {
     content: String,
+    #[serde(with = "ts_seconds")]
+    timestamp: DateTime<Utc>,
 }
 
 impl BragEntry {
     fn new(content: &str) -> Self {
         Self {
             content: content.to_owned(),
+            timestamp: Utc::now(),
         }
     }
 }
@@ -19,11 +23,25 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     match args.as_slice() {
-        [_, content] if content != "view" => add_entry(BragEntry::new(content)).expect("Failed to add brag entry"),
+        [_, content] if content != "view" && content != "--help" => {
+            add_entry(BragEntry::new(content)).expect("Failed to add brag entry")
+        }
         [_, flag] if flag == "view" => view_entries(false).expect("Failed to view brag entries"),
-        [_, flag, raw_flag] if flag == "view" && raw_flag == "--raw" => view_entries(true).expect("Failed to view brag entries in raw format"),
-        _ => eprintln!("Usage:\n  brag \"I did a thing that I am proud of\"\n  brag view\n  brag view --raw"),
+        [_, flag, raw_flag] if flag == "view" && raw_flag == "--raw" => {
+            view_entries(true).expect("Failed to view brag entries in raw format")
+        }
+        [_, flag] if flag == "--help" => print_help(),
+        _ => print_help(),
     }
+}
+
+fn print_help() {
+    println!("Brag - A CLI tool to maintain a brag list\n");
+    println!("Usage:");
+    println!("  brag [MESSAGE]      Add a new entry with the message");
+    println!("  brag view           View all brag entries");
+    println!("  brag view --raw     View all brag entries in raw JSON format");
+    println!("  brag --help         Show this help message");
 }
 
 fn brag_file_path() -> PathBuf {
@@ -53,13 +71,14 @@ fn view_entries(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
         if raw {
             println!("{}", file);
         } else {
-            let entries: Vec<BragEntry> = serde_json::from_str(&file)?;
+            let mut entries: Vec<BragEntry> = serde_json::from_str(&file)?;
+            entries.sort_by_key(|entry| entry.timestamp);
             if entries.is_empty() {
                 println!("Your brag list is currently empty. Add some achievements!");
             } else {
                 println!("Your Brag List:");
-                for (index, entry) in entries.iter().enumerate() {
-                    println!("{}. {}", index + 1, entry.content);
+                for entry in entries {
+                    println!("{}: {}", entry.timestamp.format("%Y-%m-%d %H:%M:%S"), entry.content);
                 }
             }
         }
