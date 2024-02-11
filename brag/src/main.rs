@@ -27,7 +27,7 @@ impl BragEntry {
 fn main() {
     let matches = App::new("Brag")
         .version("1.0")
-        .author("Your Name <your_email@example.com>")
+        .author("Jack Rickards jackrickards@hotmail.co.uk")
         .about("Maintains a brag list")
         .setting(AppSettings::ArgRequiredElseHelp) // This line enforces showing help if no args
         .subcommand(SubCommand::with_name("add")
