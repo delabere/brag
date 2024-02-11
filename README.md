@@ -4,6 +4,25 @@ Brag is a user-friendly command-line tool designed to help you to maintain a per
 
 When you get to a performance review, you can use your brag list as your source of inspiration. You could even throw it at a LLM like ChatGPT and it can even do the bulk of the writing for you.
 
+Your brag-list is stored as 'JSON' so it's easy to store wherever you would like or edit manually if you so wish. The structure is very simple:
+```json
+[
+  {
+    "content": "I wrote my first brag... cool 🤩",
+    "timestamp": 1707682722
+  },
+  {
+    "content": "Another one within a minute of the first, you can't stop me!",
+    "timestamp": 1707682740
+  },
+  {
+    "content": "This isn't where I parked my car?",
+    "timestamp": 1707682755
+  }
+]
+
+```
+
 Happy bragging!
 
 ## Features
