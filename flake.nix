@@ -7,39 +7,57 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    rust-overlay,
-    flake-utils,
-    ...
-  }:
+  outputs =
+    { self
+    , nixpkgs
+    , rust-overlay
+    , flake-utils
+    , ...
+    }:
     flake-utils.lib.eachDefaultSystem (
-      system: let
-        overlays = [(import rust-overlay)];
+      system:
+      let
+        overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-        brag = pkgs.rustPlatform.buildRustPackage rec {
-          pname = "brag";
-          version = "0.1.0";
-          src = ./brag;
-          cargoSha256 = "sha256-WTqLemoZ5qqdk3RBQJSoY+U/sD5Urtugl2zp9ptmS+A="; # Replace with actual hash
-          # buildInputs = [pkgs.openssl pkgs.pkgconfig];
-        };
-      in
-        with pkgs; {
-          devShells.default = mkShell {
-            buildInputs = [
-              openssl
-              pkg-config
-              eza
-              fd
-              rust-bin.stable.latest.default
-            ];
+
+        rust = pkgs.rust-bin.stable.latest;
+
+        rustPlatform =
+          let
+            rustVersion = rust.default.override {
+              # include source for LSP
+              extensions = [ "rust-src" "rustfmt" ];
+            };
+          in
+          pkgs.makeRustPlatform {
+            cargo = rustVersion;
+            rustc = rustVersion;
           };
 
-          packages.default = brag;
-        }
+        brag =
+          let
+            cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+          in
+          rustPlatform.buildRustPackage {
+            pname = cargoToml.package.name;
+            version = cargoToml.package.version;
+            src = ./.;
+            cargoLock.lockFile = ./Cargo.lock;
+          };
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          inputsFrom = [ brag ];
+          buildInputs = with pkgs; [
+            eza
+            fd
+            rust.rust-analyzer
+          ];
+        };
+
+        packages.default = brag;
+      }
     );
 }
