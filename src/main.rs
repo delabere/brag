@@ -57,22 +57,10 @@ fn main() {
 
     match command.action {
         Action::Add(args) => handle_add(&args).unwrap(),
-        Action::View { raw } => todo!(),
-        Action::Edit => todo!(),
-        Action::Remove => todo!(),
+        Action::View { raw } => handle_view(raw).unwrap(),
+        Action::Edit => handle_edit().unwrap(),
+        Action::Remove => handle_remove().unwrap(),
     }
-
-    // Corrected match statements with Some wrapping
-    //     if let Some(add_matches) = matches.subcommand_matches("add") {
-    //         handle_add(add_matches).expect("Failed to add brag entry");
-    //     } else if let Some(view_matches) = matches.subcommand_matches("view") {
-    //         let raw = view_matches.is_present("raw");
-    //         view_entries(raw).expect("Failed to view brag entries");
-    //     } else if matches.subcommand_matches("edit").is_some() {
-    //         edit_entry().expect("Failed to edit brag entry");
-    //     } else if matches.subcommand_matches("remove").is_some() {
-    //         remove_entry().expect("Failed to remove brag entry");
-    //     }
 }
 
 fn handle_add(args: &Add) -> Result<(), Box<dyn std::error::Error>> {
@@ -81,8 +69,6 @@ fn handle_add(args: &Add) -> Result<(), Box<dyn std::error::Error>> {
         None => add_entry_from_editor(),
     }
 }
-
-// Implement add_entry_from_editor, save_entry, view_entries, edit_entry, remove_entry, and utility functions here...
 
 fn brag_file_path() -> PathBuf {
     home_dir()
@@ -110,8 +96,7 @@ fn add_entry_from_editor() -> Result<(), Box<dyn std::error::Error>> {
         println!("No content provided. No entry added.");
     }
 
-    // Optionally delete the temp file here if you want to clean up
-    // std::fs::remove_file(temp_path)?;
+    std::fs::remove_file(temp_path)?;
 
     Ok(())
 }
@@ -130,7 +115,7 @@ fn save_entry(entry: BragEntry) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn view_entries(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_view(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
     let path = brag_file_path();
     if path.exists() {
         let file = fs::read_to_string(&path)?;
@@ -157,7 +142,7 @@ fn view_entries(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn edit_entry() -> Result<(), Box<dyn std::error::Error>> {
+fn handle_edit() -> Result<(), Box<dyn std::error::Error>> {
     let path = brag_file_path();
     if !path.exists() {
         println!("Your brag list is currently empty.");
@@ -202,7 +187,7 @@ fn edit_entry() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-fn remove_entry() -> Result<(), Box<dyn std::error::Error>> {
+fn handle_remove() -> Result<(), Box<dyn std::error::Error>> {
     let path = brag_file_path();
     if !path.exists() {
         println!("Your brag list is currently empty.");
