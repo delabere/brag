@@ -126,10 +126,9 @@ fn handle_view(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
             if entries.is_empty() {
                 println!("Your brag list is currently empty.");
             } else {
-                for (index, entry) in entries.iter().enumerate() {
+                for entry in entries.iter() {
                     println!(
-                        "{}. {}: {}",
-                        index + 1,
+                        "{}: {}",
                         entry.timestamp.format("%Y-%m-%d %H:%M:%S"),
                         entry.content
                     );
@@ -222,5 +221,3 @@ fn handle_remove() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-// Note: You'll need to re-implement view_entries, edit_entry, and remove_entry functions similar to previous examples.
-// These functions will largely remain unchanged from their earlier implementations.
