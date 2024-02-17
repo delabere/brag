@@ -1,12 +1,12 @@
-use clap::{App, Arg, SubCommand, ArgMatches, AppSettings};
-use chrono::{DateTime, Utc, serde::ts_seconds};
+use chrono::{serde::ts_seconds, DateTime, Utc};
+use clap::{Parser, Subcommand};
 use console::Term;
-use dialoguer::{Select, theme::ColorfulTheme};
+use dialoguer::{theme::ColorfulTheme, Select};
 use dirs::home_dir;
 use serde::{Deserialize, Serialize};
-use std::{env, fs, io::Read, path::PathBuf, process::Command};
-use tempfile::NamedTempFile;
-use std::io::Write; // Add this at the top where other `use` statements are
+use std::io::Write;
+use std::{env, fs, io::Read, path::PathBuf, process};
+use tempfile::NamedTempFile; // Add this at the top where other `use` statements are
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BragEntry {
@@ -24,55 +24,70 @@ impl BragEntry {
     }
 }
 
-fn main() {
-    let matches = App::new("Brag")
-        .version("1.0")
-        .author("Jack Rickards jackrickards@hotmail.co.uk")
-        .about("Maintains a brag list")
-        .setting(AppSettings::ArgRequiredElseHelp) // This line enforces showing help if no args
-        .subcommand(SubCommand::with_name("add")
-            .about("Adds a new brag to your list or opens an editor to write the brag")
-            .arg(Arg::with_name("MESSAGE")
-                .help("The brag message to add")
-                .index(1)))
-        .subcommand(SubCommand::with_name("view")
-            .about("Views your brag list")
-            .arg(Arg::with_name("raw")
-                .long("raw")
-                .help("Displays the raw JSON data")))
-        .subcommand(SubCommand::with_name("edit")
-            .about("Edits an existing brag entry"))
-        .subcommand(SubCommand::with_name("remove")
-            .about("Removes an entry from your brag list"))
-        .get_matches();
-
-    // Corrected match statements with Some wrapping
-    if let Some(add_matches) = matches.subcommand_matches("add") {
-        handle_add(add_matches).expect("Failed to add brag entry");
-    } else if let Some(view_matches) = matches.subcommand_matches("view") {
-        let raw = view_matches.is_present("raw");
-        view_entries(raw).expect("Failed to view brag entries");
-    } else if matches.subcommand_matches("edit").is_some() {
-        edit_entry().expect("Failed to edit brag entry");
-    } else if matches.subcommand_matches("remove").is_some() {
-        remove_entry().expect("Failed to remove brag entry");
-    }
+#[derive(Debug, Parser)]
+struct Add {
+    /// The brag message to add
+    #[arg(short, long)]
+    text: Option<String>,
 }
 
-fn handle_add(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(message) = matches.value_of("MESSAGE") {
-        save_entry(BragEntry::new(message.to_string()))?;
-        println!("Brag entry added!");
-    } else {
-        add_entry_from_editor()?;
+#[derive(Debug, Subcommand)]
+enum Action {
+    /// Adds a new brag to your list or opens an editor to write the brag
+    Add(Add),
+    /// Views your brag list
+    View {
+        /// Display the raw JSON data
+        #[arg(short, long)]
+        raw: bool,
+    },
+    Edit,
+    Remove,
+}
+
+#[derive(Debug, Parser)]
+struct Brag {
+    #[command(subcommand)]
+    action: Action,
+}
+
+fn main() {
+    let command = Brag::parse();
+    println!("{:?}", command);
+
+    match command.action {
+        Action::Add(args) => handle_add(&args).unwrap(),
+        Action::View { raw } => todo!(),
+        Action::Edit => todo!(),
+        Action::Remove => todo!(),
     }
-    Ok(())
+
+    // Corrected match statements with Some wrapping
+    //     if let Some(add_matches) = matches.subcommand_matches("add") {
+    //         handle_add(add_matches).expect("Failed to add brag entry");
+    //     } else if let Some(view_matches) = matches.subcommand_matches("view") {
+    //         let raw = view_matches.is_present("raw");
+    //         view_entries(raw).expect("Failed to view brag entries");
+    //     } else if matches.subcommand_matches("edit").is_some() {
+    //         edit_entry().expect("Failed to edit brag entry");
+    //     } else if matches.subcommand_matches("remove").is_some() {
+    //         remove_entry().expect("Failed to remove brag entry");
+    //     }
+}
+
+fn handle_add(args: &Add) -> Result<(), Box<dyn std::error::Error>> {
+    match &args.text {
+        Some(message) => save_entry(BragEntry::new(message.clone())),
+        None => add_entry_from_editor(),
+    }
 }
 
 // Implement add_entry_from_editor, save_entry, view_entries, edit_entry, remove_entry, and utility functions here...
 
 fn brag_file_path() -> PathBuf {
-    home_dir().expect("Could not find home directory").join(".brag_list.json")
+    home_dir()
+        .expect("Could not find home directory")
+        .join(".brag_list.json")
 }
 
 fn add_entry_from_editor() -> Result<(), Box<dyn std::error::Error>> {
@@ -81,9 +96,7 @@ fn add_entry_from_editor() -> Result<(), Box<dyn std::error::Error>> {
 
     let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
 
-    Command::new(editor)
-        .arg(&temp_path)
-        .status()?;
+    process::Command::new(editor).arg(&temp_path).status()?;
 
     let mut file = std::fs::File::open(&temp_path)?;
     let mut content = String::new();
@@ -129,7 +142,12 @@ fn view_entries(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
                 println!("Your brag list is currently empty.");
             } else {
                 for (index, entry) in entries.iter().enumerate() {
-                    println!("{}. {}: {}", index + 1, entry.timestamp.format("%Y-%m-%d %H:%M:%S"), entry.content);
+                    println!(
+                        "{}. {}: {}",
+                        index + 1,
+                        entry.timestamp.format("%Y-%m-%d %H:%M:%S"),
+                        entry.content
+                    );
                 }
             }
         }
@@ -156,7 +174,12 @@ fn edit_entry() -> Result<(), Box<dyn std::error::Error>> {
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select an entry to edit")
         .default(0)
-        .items(&entries.iter().map(|e| e.content.as_str()).collect::<Vec<&str>>())
+        .items(
+            &entries
+                .iter()
+                .map(|e| e.content.as_str())
+                .collect::<Vec<&str>>(),
+        )
         .interact_on_opt(&Term::stderr())?;
 
     if let Some(index) = selection {
@@ -165,9 +188,7 @@ fn edit_entry() -> Result<(), Box<dyn std::error::Error>> {
         write!(temp_file.as_file_mut(), "{}", entries[index].content)?;
 
         let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
-        Command::new(editor)
-            .arg(&temp_path)
-            .status()?;
+        process::Command::new(editor).arg(&temp_path).status()?;
 
         let mut updated_content = String::new();
         std::fs::File::open(&temp_path)?.read_to_string(&mut updated_content)?;
@@ -198,7 +219,12 @@ fn remove_entry() -> Result<(), Box<dyn std::error::Error>> {
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select an entry to remove")
         .default(0)
-        .items(&entries.iter().map(|e| e.content.as_str()).collect::<Vec<&str>>())
+        .items(
+            &entries
+                .iter()
+                .map(|e| e.content.as_str())
+                .collect::<Vec<&str>>(),
+        )
         .interact_on_opt(&Term::stderr())?;
 
     if let Some(index) = selection {
