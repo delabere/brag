@@ -1,28 +1,15 @@
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use chrono::{serde::ts_seconds, DateTime, Utc};
 use clap::{Parser, Subcommand};
 use console::Term;
 use dialoguer::{theme::ColorfulTheme, Select};
 use dirs::home_dir;
 use serde::{Deserialize, Serialize};
-use std::io::Write;
-use std::{env, fs, io::Read, path::PathBuf, process};
-use tempfile::NamedTempFile; // Add this at the top where other `use` statements are
-
-#[derive(Serialize, Deserialize, Debug)]
-struct BragEntry {
-    content: String,
-    #[serde(with = "ts_seconds")]
-    timestamp: DateTime<Utc>,
-}
-
-impl BragEntry {
-    fn new(content: String) -> Self {
-        Self {
-            content,
-            timestamp: Utc::now(),
-        }
-    }
-}
+use std::fmt::Display;
+use std::io::{Seek, SeekFrom, Write};
+use std::process::Command;
+use std::{env, fs, io::Read, path::PathBuf};
+use tempfile::NamedTempFile;
 
 #[derive(Debug, Parser)]
 struct Add {
@@ -31,193 +18,174 @@ struct Add {
     text: Option<String>,
 }
 
+#[derive(Debug, Parser)]
+struct View {
+    /// Display raw JSON data
+    #[arg(short, long)]
+    raw: bool,
+}
+
 #[derive(Debug, Subcommand)]
 enum Action {
     /// Adds a new brag to your list or opens an editor to write the brag
     Add(Add),
     /// Views your brag list
-    View {
-        /// Display the raw JSON data
-        #[arg(short, long)]
-        raw: bool,
-    },
+    View(View),
     Edit,
     Remove,
 }
 
 #[derive(Debug, Parser)]
-struct Brag {
+struct Cli {
     #[command(subcommand)]
     action: Action,
 }
 
-fn main() {
-    let command = Brag::parse();
-    println!("{:?}", command);
-
+fn main() -> Result<()> {
+    let command = Cli::parse();
+    let mut brag = Brag::read()?;
     match command.action {
-        Action::Add(args) => handle_add(&args).unwrap(),
-        Action::View { raw } => handle_view(raw).unwrap(),
-        Action::Edit => handle_edit().unwrap(),
-        Action::Remove => handle_remove().unwrap(),
+        Action::Add(args) => brag.add(&args),
+        Action::View(args) => brag.view(&args),
+        Action::Edit => brag.edit(),
+        Action::Remove => brag.remove(),
+    }?;
+    brag.write()
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Entry {
+    content: String,
+    #[serde(with = "ts_seconds")]
+    timestamp: DateTime<Utc>,
+}
+
+impl Entry {
+    fn new(content: &str) -> Self {
+        Self {
+            content: content.to_owned(),
+            timestamp: Utc::now(),
+        }
+    }
+
+    fn edit(&mut self) -> Result<()> {
+        let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
+
+        let mut tmp = NamedTempFile::new()?;
+        tmp.write_all(self.content.as_bytes())?;
+        Command::new(editor).arg(tmp.path()).status()?;
+
+        let mut res = String::new();
+        tmp.seek(SeekFrom::Start(0))?;
+        tmp.read_to_string(&mut res)?;
+
+        self.content = res.trim().to_string();
+        if self.content.is_empty() {
+            bail!("No content provided!");
+        }
+        Ok(())
     }
 }
 
-fn handle_add(args: &Add) -> Result<(), Box<dyn std::error::Error>> {
-    match &args.text {
-        Some(message) => save_entry(BragEntry::new(message.clone())),
-        None => add_entry_from_editor(),
+impl Display for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.timestamp.format("%Y-%m-%d %H:%M:%S"),
+            self.content
+        )
     }
 }
 
-fn brag_file_path() -> PathBuf {
-    home_dir()
-        .expect("Could not find home directory")
-        .join(".brag_list.json")
+#[derive(Serialize, Deserialize, Debug)]
+struct Brag {
+    entries: Vec<Entry>,
 }
 
-fn add_entry_from_editor() -> Result<(), Box<dyn std::error::Error>> {
-    let temp_file = NamedTempFile::new()?;
-    let temp_path = temp_file.path().to_owned();
-
-    let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
-
-    process::Command::new(editor).arg(&temp_path).status()?;
-
-    let mut file = std::fs::File::open(&temp_path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-
-    if !content.trim().is_empty() {
-        let entry = BragEntry::new(content.trim().to_string());
-        save_entry(entry)?;
-        println!("Brag entry added!");
-    } else {
-        println!("No content provided. No entry added.");
+impl Brag {
+    fn path() -> PathBuf {
+        home_dir()
+            .expect("Could not find home directory")
+            .join(".brag_list.json")
     }
 
-    std::fs::remove_file(temp_path)?;
-
-    Ok(())
-}
-
-fn save_entry(entry: BragEntry) -> Result<(), Box<dyn std::error::Error>> {
-    let path = brag_file_path();
-    let mut entries = if path.exists() {
-        let file = fs::read_to_string(&path)?;
-        serde_json::from_str(&file)?
-    } else {
-        Vec::new()
-    };
-
-    entries.push(entry);
-    fs::write(path, serde_json::to_string(&entries)?)?;
-    Ok(())
-}
-
-fn handle_view(raw: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let path = brag_file_path();
-    if path.exists() {
-        let file = fs::read_to_string(&path)?;
-        if raw {
-            println!("{}", file);
-        } else {
-            let entries: Vec<BragEntry> = serde_json::from_str(&file)?;
-            if entries.is_empty() {
-                println!("Your brag list is currently empty.");
-            } else {
-                for entry in entries.iter() {
-                    println!(
-                        "{}: {}",
-                        entry.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                        entry.content
-                    );
+    fn read() -> Result<Self> {
+        match std::fs::File::open(Brag::path()) {
+            Ok(reader) => {
+                let brag =
+                    serde_json::from_reader(reader).context("Failed to parse .brag_list.json")?;
+                Ok(brag)
+            }
+            Err(e) => {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    bail!(e)
                 }
+                Ok(Brag { entries: vec![] })
             }
         }
-    } else {
-        println!("Your brag list is currently empty.");
-    }
-    Ok(())
-}
-
-fn handle_edit() -> Result<(), Box<dyn std::error::Error>> {
-    let path = brag_file_path();
-    if !path.exists() {
-        println!("Your brag list is currently empty.");
-        return Ok(());
     }
 
-    let file = fs::read_to_string(&path)?;
-    let mut entries: Vec<BragEntry> = serde_json::from_str(&file)?;
-    if entries.is_empty() {
-        println!("Your brag list is currently empty.");
-        return Ok(());
+    fn write(&self) -> Result<()> {
+        let writer = std::fs::File::options()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(Brag::path())?;
+        serde_json::to_writer_pretty(writer, self).context("Failed to write .brag_list.json")
     }
 
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Select an entry to edit")
-        .default(0)
-        .items(
-            &entries
-                .iter()
-                .map(|e| e.content.as_str())
-                .collect::<Vec<&str>>(),
-        )
-        .interact_on_opt(&Term::stderr())?;
+    fn select_entry(&self, prompt: &str) -> Result<usize> {
+        ensure!(
+            !self.entries.is_empty(),
+            "Your brag list is currently empty."
+        );
 
-    if let Some(index) = selection {
-        let mut temp_file = NamedTempFile::new()?;
-        let temp_path = temp_file.path().to_owned();
-        write!(temp_file.as_file_mut(), "{}", entries[index].content)?;
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt(prompt)
+            .default(0)
+            .items(&self.entries)
+            .interact_on_opt(&Term::stderr())?;
 
-        let editor = env::var("EDITOR").unwrap_or_else(|_| "vim".to_string());
-        process::Command::new(editor).arg(&temp_path).status()?;
+        selection.ok_or(anyhow!("No entry selected"))
+    }
 
-        let mut updated_content = String::new();
-        std::fs::File::open(&temp_path)?.read_to_string(&mut updated_content)?;
+    fn add(&mut self, args: &Add) -> Result<()> {
+        let entry = match &args.text {
+            Some(message) => Entry::new(message),
+            None => {
+                let mut entry = Entry::new("");
+                entry.edit()?;
+                entry
+            }
+        };
+        self.entries.push(entry);
+        Ok(())
+    }
 
-        entries[index].content = updated_content.trim().to_string();
-        fs::write(path, serde_json::to_string(&entries)?)?;
+    fn view(&self, args: &View) -> Result<()> {
+        if args.raw {
+            println!("{}", fs::read_to_string(Brag::path())?);
+            return Ok(());
+        }
+
+        for entry in self.entries.iter() {
+            println!("{}", entry);
+        }
+        Ok(())
+    }
+
+    fn edit(&mut self) -> Result<()> {
+        let index = self.select_entry("Select entry to edit")?;
+        self.entries[index].edit()?;
         println!("Entry updated.");
-    } else {
-        println!("No entry selected.");
+        Ok(())
     }
 
-    Ok(())
-}
-fn handle_remove() -> Result<(), Box<dyn std::error::Error>> {
-    let path = brag_file_path();
-    if !path.exists() {
-        println!("Your brag list is currently empty.");
-        return Ok(());
-    }
-
-    let file = fs::read_to_string(&path)?;
-    let mut entries: Vec<BragEntry> = serde_json::from_str(&file)?;
-    if entries.is_empty() {
-        println!("Your brag list is currently empty.");
-        return Ok(());
-    }
-
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Select an entry to remove")
-        .default(0)
-        .items(
-            &entries
-                .iter()
-                .map(|e| e.content.as_str())
-                .collect::<Vec<&str>>(),
-        )
-        .interact_on_opt(&Term::stderr())?;
-
-    if let Some(index) = selection {
-        entries.remove(index);
-        fs::write(path, serde_json::to_string(&entries)?)?;
+    fn remove(&mut self) -> Result<()> {
+        let index = self.select_entry("Select entry to remove")?;
+        self.entries.remove(index);
         println!("Entry removed.");
-    } else {
-        println!("No entry removed.");
+        Ok(())
     }
-
-    Ok(())
 }
